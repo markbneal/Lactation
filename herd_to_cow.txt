@@ -1,0 +1,4 @@
+cow1 cow2 cow3 cow4 cow5 cow6 cow7 cow8 cow9
+1 1 1 0 0 0 0 0 0
+0 0 0 1 1 0 0 0 0
+0 0 0 0 0 1 1 1 1

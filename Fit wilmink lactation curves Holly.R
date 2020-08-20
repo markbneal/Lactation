@@ -23,6 +23,7 @@ p <- ggplot(data = data, aes(x = PeriodNo, y = MilkYield, fill = CowId)) +
   geom_point() 
 p
 
+
 unique(data$CowId)
 CowIds <- as.vector(unique(data$CowId))
 CowIds.list <- split(CowIds, seq(length(CowIds)))

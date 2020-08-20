@@ -1,14 +1,15 @@
-# fit lactation curves
+# fit wilmink lactation curves, prepare data for STAN Bayesian fitting model
 
 #rm(list=ls(all=TRUE))
 
 #read in data ####
-#setwd("C:/Users/nealm/Desktop/dairynz/Lactation")
-
 data <- read.csv("2003-04StrainProds.csv")
 head(data)
 library(ggplot2)
 library(ggpmisc)
+library(cowplot)
+library(dplyr)
+
 #plot all cows
 p <- ggplot(data = data, aes(x = PeriodNo, y = MilkYield, fill = CowId)) + 
   geom_point() 
@@ -49,8 +50,6 @@ dataclean$StartOfPeriod <- (as.numeric(dataclean$Date) - dataclean$DaysInMilk)
 #maxdate <- max(dataclean$Date)
 dataclean$EndOfPeriod <- (as.numeric(dataclean$Date) - 7 + dataclean$DaysInMilk)
 head(dataclean)
-
-library(dplyr)
 
 unique(dataclean$StartOfPeriod)
 class(dataclean$StartOfPeriod)
@@ -108,24 +107,33 @@ head(finaldata)
 my.linear.formula <- y ~ x
 my.poly2.formula <- y ~ x + I(x^2)
 
+#fitted bayesian cofficients - but they vary by facet (Cow)
+# fun.1 <- function(x) 25.12925 -5.63838*exp(-.05*x) -0.04923074*x
+# 
+# f <- 2
+# fun.1 <- function(x) allcoefs[f,2] +allcoefs[f,3]*exp(-.05*x) +allcoefs[f,4]*x
+# 
+# CowIds
 
-
+#plot
 finaldata$CowId <- as.factor(finaldata$CowId)
-p <- ggplot(data = subset(finaldata, CowId %in% c(852,1909,9855,9933,9924,9886,9926,9772,9775,1991,1982)), aes(x = DIM, y = MilkYieldPerDay, fill = CowId, colour = CowId)) + 
+p <- ggplot(data = subset(finaldata, CowId %in% c(852,1909,9855,9933,9924,9886,9926,9772,9775,1991,1982)), 
+            aes(x = DIM, y = MilkYieldPerDay, fill = CowId, colour = CowId)) + 
   geom_point() +
-  #stat_poly_eq(formula = my.poly2.formula, aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), parse = TRUE) + #+
-  #stat_smooth(method = 'nls', formula = y ~ a + b*exp(d*x) + c*x, se = FALSE, method.args = list(start=c(a=31,b=-11,c=-.07,d=-.05), control=nls.control(maxiter=200)), colour = "red") + 
-  stat_smooth(method = 'nls', formula = y ~ a + b*exp(-.05*x) + c*x, se = FALSE, method.args = list(start=c(a=31,b=-11,c=-.07), control=nls.control(maxiter=200)), colour = "green")+
+  stat_smooth(method = 'nls', formula = y ~ a + b*exp(-.05*x) + c*x, se = FALSE, 
+              method.args = list(start=c(a=31,b=-11,c=-.07), control=nls.control(maxiter=200)), colour = "green")+
+  #stat_function(fun = fun.1)+
   geom_smooth()
 p
 s <- p+ facet_wrap( ~ CowId)
 s
-??stat_poly_eq
-help("stat_smooth")
 
+#??stat_poly_eq
+#help("stat_smooth")
+#25.12925  -5.63838 -0.04923074
 
 #fit wilmink and get coefficients with nls ####
-?nls
+#?nls
 #one cow
 nlsobject <- nls(formula = MilkYieldPerDay  ~ a + b*exp(d*DIM) + c*DIM, data = subset(finaldata, CowId %in% c(852 )),start=c(a=31,b=-11,c=-.07, d=-.05))
 summary(nlsobject)
@@ -159,12 +167,18 @@ p <- ggplot()+
   geom_density(data = coefs, aes(x = c ))
 p
 
+#install.packages("corrgram")
 library(corrgram)
 
 corrgram(coefs[2:4], lower.panel=panel.pie)
 pairs(coefs[2:4])
 library(car)
 scatterplotMatrix(~a+b+c, data=coefs)
+
+png("coefficient plot.png")
+scatterplotMatrix(~a+b+c, data=coefs)
+dev.off()
+
 #scatterplotMatrix(~a+b+c|lactation, data=coefs)
 
 #put coefficients into custom equations for plotting on ggplot facets?
@@ -172,11 +186,11 @@ scatterplotMatrix(~a+b+c, data=coefs)
 
 #to do ####
 #grid up likely values of a, b and c coefficients - DONE
-#restirctions on coefficient values? - Not necessary
-#bayesian priors over regresision coefficients? - DONE
-#incorporate restirictions on total MS - query?????
-#restirtion on MS per months (or bayesian?) -  query??????
-#guess dry off date? - query?????
+#restrictions on coefficient values? - Not necessary
+#Bayesian priors over regression coefficients? - DONE
+#incorporate restrictions on total MS - query??
+#restriction on MS per months (or Bayesian?) -  query??
+#guess dry off date? - query??
 
 
 #make data frame for stan
@@ -193,8 +207,6 @@ ddply(shortcowdata2, .(CowId), summarise, Value = max(days))
 shortcowdata3 <- subset(shortcowdata2, days <= 245)
 shortcowdata3 <- subset(shortcowdata3, days > 0)
 dim(shortcowdata3)
-
-
 
 #delete unnecessary columns
 shortcowdata4 <- subset(shortcowdata3, select=c("CowId", "days", "MilkYieldPerDay"))
@@ -221,7 +233,6 @@ widecows <-  widecows[,-1]
 # save
 write.table(widecows, "cows.txt", row.names = FALSE, sep=" ",quote = FALSE)
 
-
 #herd data
 herdtotal <- read.csv("herd_total.csv")
 herdtotalshort <- herdtotal[-1]
@@ -243,10 +254,12 @@ write.table(cowtotalshort, "cow_total.txt", row.names = FALSE, sep=" ",quote = F
 #Model: Fitting Wilmink curves (Wilmink (1987) Livestock Production Science 16:321-334)
 #Priors: Very loosely based on observations for 500 cows fitted by nls, assumed normal, but standard deviation is inflated.
 
-#setwd("C:/Users/nealm/Desktop/dairynz/Lactation")
+#install.packages("rstan")
+#install.packages("processx")
 library("rstan")
-rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+#Sys.setenv(LOCAL_CPPFLAGS = '-march=native') #not for windows
 
 y <- as.matrix(read.table('cows.txt', header = TRUE))
 x <- seq(7,by=7,length.out=35)
@@ -258,13 +271,38 @@ v <- as.numeric(v[,1])
 
 class(x)
 class(z)
-N <- nrow(y)
+N <- as.numeric(nrow(y))
 T <- ncol(y)
 H <- length(z)
 #rstan_options(auto_write = TRUE)
-cows_fit <- stan(file = 'cows.stan') #takes about 20 seconds with no errors, 60s with no rds file
+cows_fit <- stan(file = 'cows.stan', data=c("N","T","H","x","y","z","w","v")) #takes about 20 seconds with no errors for individual fit, 60s with no rds file
+
 print(cows_fit)
 summary(cows_fit)
+cows_fit@stanmodel@dso <- new("cxxdso") 
+saveRDS(cows_fit, file = "fitcurrent.rds")
+#saveRDS(cows_fit, file = "fitwithonlydailydata.rds")
+#saveRDS(cows_fit, file = "fitwithonlycumulative.rds")
+cows_fit_current <- readRDS("fitcurrent.rds")
+cows_fit_daily <- readRDS("fitwithonlydailydata.rds")
+cows_fit_annual <- readRDS("fitwithonlycumulative.rds")
+resultscurrent <- as.data.frame(cows_fit_current@.MISC$summary$c_msd)[1]
+resultsd <- as.data.frame(cows_fit_daily@.MISC$summary$c_msd)[1]
+resultsa <- as.data.frame(cows_fit_annual@.MISC$summary$c_msd)[1]
+
+#cows_fit <- readRDS("fitwithonlycumulative.rds")
+
+
+library(tibble)
+library(dplyr)
+compare <- full_join(rownames_to_column(resultsd), rownames_to_column(resultscurrent), by = ("rowname" = "rowname"))
+#compare <- cbind(resultsd,resultsa)
+#install.packages("xlsx")
+#install.packages("rJava")
+library(xlsx)
+write.xlsx(compare, "compare.xlsx")
+
+?plot
 plot(cows_fit)
 plot(cows_fit, show_density = TRUE, ci_level = 0.5, fill_color = "purple")
 plot(cows_fit, plotfun = "hist", pars = "alpha", include = FALSE)
@@ -350,16 +388,28 @@ print(ggplot(data.frame(x=c(0,365)), aes(x)) +
 
 i <- c(1)
 #plotting nls vs bayes for each cow.
-lapply(i,
-print(ggplot(data.frame(x=c(0,365)), aes(x)) +
-        stat_function(fun=function(x)allcoefs[i,2]+allcoefs[i,3]*exp(-0.05*x)+allcoefs[i,4]*x, geom="line", aes(colour="bayes")) +
-        stat_function(fun=function(x)allcoefs[i,7]+allcoefs[i,8]*exp(-0.05*x)+allcoefs[i,9]*x, geom="line", aes(colour="nls")) )
-)
+# lapply(i,
+# print(ggplot(data.frame(x=c(0,365)), aes(x)) +
+#         stat_function(fun=function(x)allcoefs[i,2]+allcoefs[i,3]*exp(-0.05*x)+allcoefs[i,4]*x, geom="line", aes(colour="bayes")) +
+#         stat_function(fun=function(x)allcoefs[i,7]+allcoefs[i,8]*exp(-0.05*x)+allcoefs[i,9]*x, geom="line", aes(colour="nls")) )
+# )
 
+
+for(i in 1:9) {
+       print(ggplot(data.frame(x=c(0,365)), aes(x)) +
+               stat_function(fun=function(x)allcoefs[i,2]+allcoefs[i,3]*exp(-0.05*x)+allcoefs[i,4]*x, geom="line", aes(colour="bayes")) +
+               stat_function(fun=function(x)allcoefs[i,7]+allcoefs[i,8]*exp(-0.05*x)+allcoefs[i,9]*x, geom="line", aes(colour="nls")) )
+}
+
+p <- ggplot(data.frame(x=c(0:365)), aes(x)) +
+        stat_function(fun=function(x)mean(allcoefs[,2])+mean(allcoefs[,3])*exp(-0.05*x)+mean(allcoefs[,4])*x, geom="line", aes(colour="bayes")) +
+        stat_function(fun=function(x)mean(allcoefs[,7])+mean(allcoefs[,8])*exp(-0.05*x)+mean(allcoefs[,9])*x, geom="line", aes(colour="nls")) 
+p
+# s <- p+
+#   facet_wrap( ~ allcoefs$CowId)
+# s
 
 #allcoefs[9,2]
-
-
 
 class(y)
 ydf <- as.data.frame(y)
@@ -386,78 +436,46 @@ s
 
 
 
-# #web example of nls ####
-# #https://stats.stackexchange.com/questions/11947/fitting-an-exponential-model-to-data
-# 
-# # generate data
-# beta <- 0.05
-# n <- 100
-# temp <- data.frame(y = exp(beta * seq(n)) + rnorm(n), x = seq(n))
-# 
-# # plot data
-# plot(temp$x, temp$y)
-# 
-# # fit non-linear model
-# mod <- nls(y ~ exp(a + b * x), data = temp, start = list(a = 0, b = 0))
-# 
-# # add fitted curve
-# lines(temp$x, predict(mod, list(x = temp$x)))
+#fitted bayesian cofficients - but they vary by facet (Cow)
+#fun.1 <- function(x) 25.12925 -5.63838*exp(-.05*x) -0.04923074*x
+finaldata$CowId <- as.factor(finaldata$CowId)
+
+# f <- 2
+# fun.1 <- function(x) allcoefs[f,2] +allcoefs[f,3]*exp(-.05*x) +allcoefs[f,4]*x
+
+#plot function
+my_plot_function <- function(f) {
+  fun.1 <- function(x) allcoefs[f,2] +allcoefs[f,3]*exp(-.05*x) +allcoefs[f,4]*x
+  p <- ggplot(data = subset(finaldata, CowId %in% CowIds.sample[f]), 
+              aes(x = DIM, y = MilkYieldPerDay, fill = CowId, colour = CowId)) + 
+    geom_point() +
+    stat_smooth(method = 'nls', formula = y ~ a + b*exp(-.05*x) + c*x, se = FALSE, 
+              method.args = list(start=c(a=31,b=-11,c=-.07), control=nls.control(maxiter=200)), colour = "green")+
+    stat_function(fun = fun.1, colour="blue")+
+    #geom_smooth()
+    geom_smooth (alpha=0.1, linetype=0, colour="blue")+
+    stat_smooth (geom="line", alpha=0.3, size=1)+
+    annotate(geom="text", x=100,y=15,label="Locally weighted regression", colour = "red")+
+    annotate(geom="text", x=100,y=13,label="Non linear fit", colour = "green")+
+    annotate(geom="text", x=100,y=11,label="Bayesian non linear fit", colour = "blue")
+  return(p)
+}
+
+my_plot_function(1)
+#make list of plots
+plist <- list()
+for (i in 1:length(CowIds.sample)) {
+  plist[[i]] <- my_plot_function(i)
+  plot(plist[[i]])
+}
+#plist
+
+plotbox <- plot_grid(plist[[1]],plist[[2]],plist[[3]],
+                     plist[[4]],plist[[5]],plist[[6]],
+                     plist[[7]],plist[[8]],plist[[9]], nrow=3, align="hv")
+plotbox
+
+save_plot("Wilmink lactation curves - naive and bayesian.png", plotbox, base_height=8, base_width=14)
 
 
 
-# web example of bayesian analysis ####
-# https://www.r-bloggers.com/bayesian-linear-regression-analysis-without-tears-r/
-
-## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
-## Page 9: Plant Weight Data.
-#basic regression
-# ctl <- c(4.17,5.58,5.18,6.11,4.50,4.61,5.17,4.53,5.33,5.14)
-# trt <- c(4.81,4.17,4.41,3.59,5.87,3.83,6.03,4.89,4.32,4.69)
-# group <- gl(2, 10, 20, labels = c("Ctl","Trt"))
-# weight <- c(ctl, trt)
-# lmfit <- lm(weight ~ group)
-
-
-## function to compute the bayesian analog of the lmfit
-## using non-informative priors and Monte Carlo scheme
-## based on N samples
-#Returns data frame
-# library(MASS)
-# bayesfit<-function(lmfit,N){
-#   QR<-lmfit$qr
-#   df.residual<-lmfit$df.residual
-#   R<-qr.R(QR) ## R component
-#   coef<-lmfit$coef
-#   Vb<-chol2inv(R) ## variance(unscaled)
-#   s2<-(t(lmfit$residuals)%*%lmfit$residuals)
-#   s2<-s2[1,1]/df.residual
-#   
-#   ## now to sample residual variance
-#   sigma<-df.residual*s2/rchisq(N,df.residual)
-#   coef.sim<-sapply(sigma,function(x) mvrnorm(1,coef,Vb*x))
-#   ret<-data.frame(t(coef.sim))
-#   names(ret)<-names(lmfit$coef)
-#   ret$sigma<-sqrt(sigma)
-#   ret
-# }  
-# 
-# #summarises data frame
-# 
-# Bayes.sum<-function(x)
-# {
-#   c("mean"=mean(x),
-#     "se"=sd(x),
-#     "t"=mean(x)/sd(x),
-#     "median"=median(x),
-#     "CrI"=quantile(x,prob=0.025),
-#     "CrI"=quantile(x,prob=0.975)
-#   )
-# }
-# 
-# 
-# set.seed(1234)  ## reproducible sim
-# lmfit <- lm(weight ~ group)
-# bf<-bayesfit(lmfit,10000)
-# t(apply(bf,2,Bayes.sum))
-# 
-# summary(lmfit)

@@ -17,6 +17,7 @@ w <- as.matrix(read.table('herd_to_cow.txt', header = TRUE))
 v <- as.vector(read.table('cow_total.txt', header = TRUE)) 
 v <- as.numeric(v[,1])
 
+
 N <- nrow(y)
 T <- ncol(y)
 H <- length(z)

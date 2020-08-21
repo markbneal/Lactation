@@ -1,3 +1,10 @@
+## Fitting lactation curves for dairy cattle milk production.
+## The three parameter Wilmink curve is a reasonably popular approach for modelling a cows lactation data
+## It works well for trial data where we may have measured data every fortnight, week, or even daily.
+## However, for commercial farms, we might only have 3 or 4 measurements per year for each cow.
+## In this case, the prior distribution for the lactation curve parameters can be determined 
+## from trial data, and then the posterior estimates for individual cows can be determined.
+
 # fit wilmink lactation curves, prepare data for STAN Bayesian fitting model
 
 #rm(list=ls(all=TRUE))

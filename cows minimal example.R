@@ -1,4 +1,8 @@
 #cows stan minimal example, bayesian approach to fitting wilmink curves
+
+## The commented out parts are to help installation on a windows machine
+## See "install rstan help.R" for linux machines (eg server)
+
 #pkgbuild::has_build_tools(debug = TRUE)
 # Sys.setenv(RTOOLS40_HOME = "C:/rtools40")
 # Sys.getenv()
@@ -27,7 +31,9 @@ H <- length(z)
 # Sys.which("g++")
 
 #run stan
-cows_fit <- stan(file = 'cows.stan', data=c("N","T","H","x","y","z","w","v")) #takes about 20 seconds with no errors for individual fit, 60s with no rds file
+cows_fit <- stan(file = 'cows.stan', 
+                 data=c("N","T","H","x","y","z","w","v")) 
+                #takes about 20 seconds with no errors for individual fit, 60s with no rds file
 print(cows_fit)
 
 #save file

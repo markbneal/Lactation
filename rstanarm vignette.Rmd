@@ -16,9 +16,9 @@ editor_options:
 %\VignetteIndexEntry{How to Use the rstanarm Package}
 -->
 ```
-# `{r, child="children/SETTINGS-knitr.txt"} #`
+<!-- # `{r, child="children/SETTINGS-knitr.txt"} #` -->
 
-# `{r, child="children/SETTINGS-gg.txt"} #`
+<!-- # `{r, child="children/SETTINGS-gg.txt"} #` -->
 
 # Introduction
 
@@ -142,6 +142,7 @@ estimates by calling
 
 ```{r rstanarm-mle, eval = TRUE}
 #install.packages("HSAUR3")
+library(HSAUR3)
 data("womensrole", package = "HSAUR3")
 womensrole$total <- womensrole$agree + womensrole$disagree
 womensrole_glm_1 <- glm(cbind(agree, disagree) ~ education + gender,

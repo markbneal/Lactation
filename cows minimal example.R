@@ -9,6 +9,7 @@
 #install.packages(c("Rcpp", "RcppEigen", "rstan"), type = "source")
 
 library("rstan")
+library(dplyr)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 #Sys.setenv(LOCAL_CPPFLAGS = '-march=native')
@@ -32,12 +33,24 @@ H <- length(z)
 
 #run stan
 cows_fit <- stan(file = 'cows.stan', 
+                 #model_name = "my_model",
                  data=c("N","T","H","x","y","z","w","v")) 
                 #takes about 20 seconds with no errors for individual fit, 60s with no rds file
+
+## With this error, restart R session
+# Error in prep_call_sampler(object) : 
+#   the compiled object from C++ code for this model is invalid, possible reasons:
+#   - compiled with save_dso=FALSE;
+# - compiled on a different platform;
+# - does not exist (created from reading csv files).
+
+#Testing
+pairs(cows_fit, pars = c("alpha[1]", "beta[1]", "chi[1]", "lp__"))
+
 print(cows_fit)
 
 #save file
-cows_fit@stanmodel@dso <- new("cxxdso") 
+# cows_fit@stanmodel@dso <- new("cxxdso") #saves results without model
 #saveRDS(cows_fit, file = "fitwithonlycumulative.rds")
 #saveRDS(cows_fit, file = "fitwithonlydailydata.rds")
 

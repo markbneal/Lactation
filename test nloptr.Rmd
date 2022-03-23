@@ -1,0 +1,56 @@
+---
+title: "test nloptr"
+author: "MBN"
+date: "28/02/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Test nloptr on RStudio connect
+
+
+```{r cars}
+# test nloptr
+# Simon having trouble installing
+
+#install.packages("nloptr")
+
+#install.packages("remotes")
+#remotes::install_github("astamm/nloptr")
+
+library(nloptr)
+
+## Rosenbrock Banana function
+eval_f <- function(x) {   
+  return( 100 * (x[2] - x[1] * x[1])^2 + (1 - x[1])^2 )
+}
+
+## Gradient of Rosenbrock Banana function
+eval_grad_f <- function(x) { 
+  return( c( -400 * x[1] * (x[2] - x[1] * x[1]) - 2 * (1 - x[1]),
+             200 * (x[2] - x[1] * x[1]) ) )
+}
+# We define initial values
+
+# initial values
+x0 <- c( -1.2, 1 )
+# and then minimize the function using the nloptr command. This command runs some checks on the supplied inputs and returns an object with the exit code of the solver, the optimal value of the objective function and the solution. Before we can minimize the function we need to specify which algorithm we want to use
+
+opts <- list("algorithm"="NLOPT_LD_LBFGS",
+             "xtol_rel"=1.0e-8)
+# Here we use the L-BFGS algorithm (Nocedal 1980; Liu and Nocedal 1989). The characters LD in the algorithm show that this algorithm looks for local minima (L) using a derivative-based (D) algorithm. Other algorithms look for global (G) minima, or they don’t need derivatives (N). We also specified the termination criterium in terms of the relative x-tolerance. Other termination criteria are available (see Appendix \ref{sec:descoptions} for a full list of options). We then solve the minimization problem using
+
+# solve Rosenbrock Banana function
+res <- nloptr( x0=x0, 
+               eval_f=eval_f, 
+               eval_grad_f=eval_grad_f,
+               opts=opts)
+# We can see the results by printing the resulting object.
+
+print( res )
+
+```
+

@@ -173,13 +173,27 @@ pre code {
 
 <div id="test-nloptr-on-rstudio-connect" class="section level2">
 <h2>Test nloptr on RStudio connect</h2>
+<p>Bash, test cmake version <!-- ```{bash} --> <!-- #This is a bash code chunk (i.e. ```{bash}...) --> <!-- cmake --version --> <!-- ``` --></p>
 <pre class="r"><code># test nloptr
-# Simon having trouble installing
+# Simon having trouble installing, due to cmake version needing to be higher for nloptr v2+
+## problem
+# Installing package nloptr - General - RStudio Community
+# https://community.rstudio.com/t/installing-package-nloptr/132073
+
+## temp solution
+
+#Installing package nloptr - General - RStudio Community
+# remotes::install_version(&quot;nloptr&quot;, version = &quot;1.2.2.3&quot;)
+
 
 #install.packages(&quot;nloptr&quot;)
 
 #install.packages(&quot;remotes&quot;)
 #remotes::install_github(&quot;astamm/nloptr&quot;)
+
+## System, test cmake version
+# cmake_ver &lt;- system(&quot;cmake --version&quot;, intern = TRUE)
+# cmake_ver
 
 library(nloptr)
 
